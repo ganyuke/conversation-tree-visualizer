@@ -201,3 +201,31 @@ header button:hover {
     stroke-width: 1.5;
     vector-effect: non-scaling-stroke;
 }
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-spacer {
+    flex: 1 1 auto;
+}
+
+/* pushes stats to the right */
+.header-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    font-size: 12px;
+    opacity: 0.9;
+    white-space: nowrap;
+    flex-wrap: wrap;
+}
+
+.header-stats b {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    margin-right: 4px;
+}

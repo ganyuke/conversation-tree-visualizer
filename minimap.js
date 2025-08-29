@@ -1,15 +1,3 @@
-/** Compute layout extents from node positions (x = vertical, y = horizontal) */
-function layoutExtents() {
-    const nodes = root.descendants();
-    const minX = d3.min(nodes, d => d.x - NODE_H / 2);
-    const maxX = d3.max(nodes, d => d.x + NODE_H / 2);
-    const minY = d3.min(nodes, d => d.y - NODE_W / 2);
-    const maxY = d3.max(nodes, d => d.y + NODE_W / 2);
-    let w = (maxY - minY) || NODE_W;
-    let h = (maxX - minX) || NODE_H;
-    return { minX, maxX, minY, maxY, w, h };
-}
-
 /** Minimap module */
 function createMinimap({
     container = '#minimap',
@@ -135,11 +123,4 @@ function createMinimap({
 // ==== Instantiate the minimap and hook lifecycle points ====
 const minimap = createMinimap({ container: '#minimap', height: 160, pad: 8, svg, g, zoom });
 
-// After any update(root) / expand / collapse / fitToScreen:
-setTimeout(() => minimap.rebuild(), 420);
-
-// Keep it responsive:
-window.addEventListener('resize', () => {
-    // (your existing main SVG resize code here)
-    minimap.resize();
-});
+subscribeToResize(minimap.resize)

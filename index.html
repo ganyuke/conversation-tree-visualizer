@@ -4,63 +4,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LLM Chat Tree — Card Nodes (D3.js)</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <title>LLM Conversation Tree Visualizer</title>
   <link rel="stylesheet" type="text/css" href="./common.css">
 </head>
 
 <body>
-  <!--
-    HOW TO USE
-    1) Save this file and open it in a browser.
-    2) Replace the `data` constant below with your own conversation tree.
-       Structure: { speaker: 'user' | 'assistant', text: '...', timestamp?: '...', children?: [ ... ] }
-    3) Click any card to expand/collapse that branch. Use the buttons to Fit, Expand All, Collapse All.
-
-    TIP: If you want deeper customization or React, port this to react-d3-tree and replace nodeRenderer.
-  -->
-
   <header>
-    <div class="title">LLM Chat Tree — Card Nodes</div>
+    <div class="title">LLM Conversation Tree Visualizer</div>
     <button id="fit">Fit to Screen</button>
     <button id="expand">Expand All</button>
     <button id="collapse">Collapse All</button>
     <input id="convfile" type="file" accept=".json" />
+    <div class="header-spacer"></div>
+    <div id="header-stats" class="header-stats" aria-live="polite">
+      <span title="Visible / Total nodes"><b id="stat-nodes">0/0</b> nodes</span>
+      <span title="Visible / Total leaves"><b id="stat-leaves">0/0</b> leaves</span>
+      <span title="Forking nodes (degree > 1)"><b id="stat-forks">0</b> forks</span>
+      <span title="Visible / All max depth"><b id="stat-depth">0/0</b> depth</span>
+    </div>
   </header>
   <div id="minimap"></div>
 
   <div id="chart"></div>
   <script src="./d3.js"></script>
-  <script>
-    const NODE_W = 260;   // card width in px (keep in sync with CSS)
-    const NODE_H = 120;   // virtual height used for layout spacing
-    const NODE_H_GAP = 30; // extra space between siblings
-    const H_GAP = 80;    // horizontal gap between columns
-    const V_GAP = 36;    // vertical gap within column (link curvature)
-
-    const chartEl = document.getElementById('chart');
-    const width = chartEl.clientWidth || window.innerWidth;
-    const height = chartEl.clientHeight || (window.innerHeight - 64);
-
-    const svg = d3.select('#chart').append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', [0, 0, width, height])
-      .style('display', 'block');
-
-    const g = svg.append('g'); // zoom/pan container
-
-    const zoom = d3.zoom()
-      .scaleExtent([0.3, 2.5])
-      .on('zoom.main', (event) => {
-        g.attr('transform', event.transform);
-        minimap.syncViewbox(); // keep minimap viewport in sync
-      });
-
-    svg.call(zoom);
-
-  </script>
+  <script src="./setup.js"></script>
   <script src="./minimap.js"></script>
+  <script src="./stats.js"></script>
   <script src="./tree.js"></script>
   <script src="./importer.js"></script>
 </body>
