@@ -146,7 +146,7 @@ function update(source) {
         .attr('height', NODE_H);
 
     const card = fo.append('xhtml:div')
-        .attr('class', d => `node-card ${d.data.speaker === 'user' ? 'user' : 'assistant'}`)
+        .attr('class', d => `node-card ${d.data.speaker}`)
         .attr('title', d => d.data.text);
 
     const meta = card.append('div').attr('class', 'node-meta');

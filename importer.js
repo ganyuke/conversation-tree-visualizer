@@ -77,13 +77,13 @@ function chatgptConversationToD3(conv, opts = {}) {
         }
         if (!msg && kids.length > 1) {
             // Create a container to keep branching (rare)
-            return { speaker: "assistant", text: "", timestamp: "", children: kids };
+            return { speaker: "meta", text: "", timestamp: "", children: kids };
         }
 
         if (!keep) {
             // If filtered out but has children, hoist them
             if (kids.length === 1) return kids[0];
-            if (kids.length > 1) return { speaker: "assistant", text: "", timestamp: "", children: kids };
+            if (kids.length > 1) return { speaker: "meta", text: "", timestamp: "", children: kids };
             return null;
         }
 
@@ -99,7 +99,7 @@ function chatgptConversationToD3(conv, opts = {}) {
 
     // If root collapsed to null (e.g., all filtered), create a stub
     if (!rootNode) {
-        rootNode = { speaker: "assistant", text: "(no visible messages)", children: [] };
+        rootNode = { speaker: "meta", text: "(no visible messages)", children: [] };
     }
 
     return rootNode;

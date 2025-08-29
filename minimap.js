@@ -82,7 +82,7 @@ function createMinimap({
         miniNodes.enter().append('rect')
             .attr('class', 'mini-node')
             .attr('width', 3).attr('height', 3)
-            .attr('fill', d => d.data.speaker === 'user' ? '#8cb2ff' : '#c6a4ff')
+            .attr('fill', d => d.data.speaker === 'user' ? '#8cb2ff' : d.data.speaker === 'assistant' ? '#c6a4ff' : '#ffab10')
             .merge(miniNodes)
             .attr('x', d => state.tx + state.k * d.y - 1.5)
             .attr('y', d => state.ty + state.k * d.x - 1.5);

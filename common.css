@@ -88,6 +88,11 @@ header button:hover {
     box-sizing: border-box;
 }
 
+.node-card.meta {
+    background: color-mix(in oklab, var(--user) 100%, #313337 80%);
+    border-color: #434346;
+}
+
 .node-card.user {
     background: color-mix(in oklab, var(--user) 100%, #0e1531 80%);
     border-color: #26407a;
@@ -111,6 +116,10 @@ header button:hover {
     letter-spacing: .3px;
     text-transform: uppercase;
     opacity: .9;
+}
+
+.badge.meta {
+    color: rgb(119, 107, 90);
 }
 
 .badge.user {
@@ -140,13 +149,13 @@ header button:hover {
     -webkit-box-orient: vertical;
     white-space: pre-wrap;
     /* preserve newlines */
+    margin-bottom: auto;
 }
 
 .node-actions {
     display: flex;
     gap: 8px;
     margin-top: 6px;
-    flex-grow: 1;
 }
 
 .node-btn {
