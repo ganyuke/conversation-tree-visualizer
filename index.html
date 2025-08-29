@@ -187,6 +187,23 @@
       border-radius: 16px;
     }
 
+    #minimap {
+  position: fixed;
+  right: 12px; bottom: 12px;
+  width: 240px; height: 160px;  /* tweak */
+  border: 1px solid #263253; border-radius: 8px;
+  background: rgba(15, 23, 54, 0.8);
+  backdrop-filter: blur(2px);
+  z-index: 30;
+}
+#minimap .viewbox {
+  fill: none;
+  stroke: #8cb2ff;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+
     /* Helper tooltip style for long text via title attribute is native; optional custom tooltip omitted for brevity */
   </style>
 </head>
@@ -232,9 +249,121 @@
     </script>
 
   </header>
+<div id="minimap"></div>
 
   <div id="chart"></div>
+  <script>
+        const zoom = d3.zoom()
+      .scaleExtent([0.3, 2.5])
+      .on('zoom', (event) => g.attr('transform', event.transform));
 
+      
+    // --- Build the minimap SVG ---
+const miniW = 240, miniH = 160, miniPad = 8;
+const miniSvg = d3.select('#minimap').append('svg')
+  .attr('width', miniW).attr('height', miniH);
+const miniG = miniSvg.append('g');           // content in minimap
+const miniView = miniSvg.append('rect')      // shows current viewport
+  .attr('class', 'viewbox');
+
+// Brush to control the main viewport from the minimap
+const brush = d3.brush()
+  .extent([[0,0],[miniW,miniH]])
+  .on('brush end', brushed);
+miniSvg.append('g').attr('class','mini-brush').call(brush);
+
+// Internal mapping from tree coords -> minimap coords
+let miniK = 1, miniTx = 0, miniTy = 0;
+
+// Convert main (y,x) -> minimap (X,Y)
+function toMini(y, x) {
+  return [miniTx + miniK * y, miniTy + miniK * x];
+}
+
+function rebuildMinimap() {
+  const { minX, maxX, minY, maxY, w, h } = layoutExtents();
+
+  const miniW = 240, miniH = 160, miniPad = 8;
+
+  // Fit whole tree bounds into the minimap
+  const kx = (miniW - miniPad*2) / w;
+  const ky = (miniH - miniPad*2) / h;
+  miniK = Math.max(0.0001, Math.min(kx, ky)); // never 0/NaN
+  miniTx = miniPad - miniK * minY;
+  miniTy = miniPad - miniK * minX;
+
+  // Draw links as straight lines (cheap)
+  const links = root.links();
+  const miniLinks = miniG.selectAll('line.mini-link').data(links, d => d.target.id);
+  miniLinks.enter().append('line')
+    .attr('class','mini-link')
+    .attr('stroke','#3a466f').attr('stroke-width',1).attr('opacity',0.7)
+    .merge(miniLinks)
+    .attr('x1', d => miniTx + miniK * d.source.y)
+    .attr('y1', d => miniTy + miniK * d.source.x)
+    .attr('x2', d => miniTx + miniK * d.target.y)
+    .attr('y2', d => miniTy + miniK * d.target.x);
+  miniLinks.exit().remove();
+
+  // Draw tiny node markers
+  const nodes = root.descendants();
+  const miniNodes = miniG.selectAll('rect.mini-node').data(nodes, d => d.id);
+  miniNodes.enter().append('rect')
+    .attr('class','mini-node')
+    .attr('width', 3).attr('height', 3)
+    .attr('fill', d => d.data.speaker === 'user' ? '#8cb2ff' : '#c6a4ff')
+    .merge(miniNodes)
+    .attr('x', d => miniTx + miniK * d.y - 1.5)
+    .attr('y', d => miniTy + miniK * d.x - 1.5);
+  miniNodes.exit().remove();
+}
+
+
+// Update the blue viewport rect when the main zoom changes
+function syncMinimapViewbox() {
+  const t = d3.zoomTransform(svg.node());
+  const svgW = +svg.attr('width'), svgH = +svg.attr('height');
+
+  const contentX0 = (-t.y) / t.k;           // top-left in tree coords (x vertical)
+  const contentY0 = (-t.x) / t.k;           // top-left in tree coords (y horizontal)
+  const contentW  = svgW / t.k;
+  const contentH  = svgH / t.k;
+
+  const [mx, my] = toMini(contentY0, contentX0);
+  miniView
+    .attr('x', mx).attr('y', my)
+    .attr('width', miniK * contentW)
+    .attr('height', miniK * contentH);
+}
+
+// When user brushes the minimap, move/zoom the main view
+function brushed(ev) {
+  if (!ev.selection) return;
+  const [[x0,y0],[x1,y1]] = ev.selection;
+
+  // Convert selection back to tree coords
+  const selY0 = (x0 - miniTx) / miniK; // horizontal in tree coords
+  const selX0 = (y0 - miniTy) / miniK; // vertical in tree coords
+  const selY1 = (x1 - miniTx) / miniK;
+  const selX1 = (y1 - miniTy) / miniK;
+
+  const svgW = +svg.attr('width'), svgH = +svg.attr('height');
+  const k = Math.min(svgW / (selY1 - selY0), svgH / (selX1 - selX0));
+  const tx = (svgW / 2) - k * ((selY0 + selY1) / 2);
+  const ty = (svgH / 2) - k * ((selX0 + selX1) / 2);
+
+  svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
+}
+
+// Hook into your existing zoom to keep the minimap synced
+zoom.on('zoom.minimap', (event) => {
+  g.attr('transform', event.transform);
+  syncMinimapViewbox();
+});
+
+// Call this after each `update(root)` or any data change:
+
+  </script>
   <script>
     // ======== SAMPLE DATA (Replace with your own) ========
     const data = {
@@ -305,9 +434,6 @@
 
     const g = svg.append('g'); // zoom/pan container
 
-    const zoom = d3.zoom()
-      .scaleExtent([0.3, 2.5])
-      .on('zoom', (event) => g.attr('transform', event.transform));
     svg.call(zoom);
 
 
@@ -343,10 +469,19 @@
         return root;
       }
 
+      const tree = d3.tree().nodeSize([NODE_H + NODE_H_GAP, NODE_W + H_GAP]);
+
+
       let root;
 
       function setRoot(data) {
           root = buildRoot(data);
+          // First render
+          update(root);
+          // Slight delay to allow layout, then fit
+          setTimeout(() => {
+            fitToScreen(60);
+          }, 50);
       }
 
       setRoot(data);
@@ -447,10 +582,12 @@
 
       // Stash old positions for smooth transitions
       nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+
+      rebuildMinimap();
+      syncMinimapViewbox();
     }
 
 
-    const tree = d3.tree().nodeSize([NODE_H + NODE_H_GAP, NODE_W + H_GAP]);
 
     function diagonal(s, d) {
       // Smooth horizontal edge
@@ -469,23 +606,33 @@
       setTimeout(() => fitToScreen(60), 410);
     });
 
-    function fitToScreen(pad = 40) {
-      // 1) Gather layout extents from node data
+    function layoutExtents() {
       const nodes = root.descendants();
-      const minX = d3.min(nodes, d => d.x - NODE_H / 2);
-      const maxX = d3.max(nodes, d => d.x + NODE_H / 2);
-      const minY = d3.min(nodes, d => d.y - NODE_W / 2);
-      const maxY = d3.max(nodes, d => d.y + NODE_W / 2);
+      // account for the visual card footprint
+      const minX = d3.min(nodes, d => d.x - NODE_H/2);
+      const maxX = d3.max(nodes, d => d.x + NODE_H/2);
+      const minY = d3.min(nodes, d => d.y - NODE_W/2);
+      const maxY = d3.max(nodes, d => d.y + NODE_W/2);
 
-      const contentW = maxY - minY;
-      const contentH = maxX - minX;
+      let w = (maxY - minY);
+      let h = (maxX - minX);
+
+      // Guard against degenerate 0/NaN extents (e.g., only root visible)
+      if (!isFinite(w) || w < 1) w = NODE_W;
+      if (!isFinite(h) || h < 1) h = NODE_H;
+
+      return { minX, maxX, minY, maxY, w, h };
+    }
+
+    function fitToScreen(pad = 40) {
+      const { minX, maxX, minY, maxY, w, h } = layoutExtents();
 
       // 2) Compute scale to fit inside the SVG with padding
       const svgW = +svg.attr('width');
       const svgH = +svg.attr('height');
       let scale = Math.min(
-        (svgW - pad * 2) / Math.max(1, contentW),
-        (svgH - pad * 2) / Math.max(1, contentH)
+        (svgW - pad * 2) / Math.max(1, w),
+        (svgH - pad * 2) / Math.max(1, h)
       );
       scale = Math.max(0.3, Math.min(2.0, scale)); // clamp like before
 
@@ -520,11 +667,6 @@
       update(root);
       setTimeout(() => fitToScreen(60), 410);
     });
-
-    // First render
-    update(root);
-    // Slight delay to allow layout, then fit
-    setTimeout(() => fitToScreen(60), 50);
 
     // Handle resize
     window.addEventListener('resize', () => {
