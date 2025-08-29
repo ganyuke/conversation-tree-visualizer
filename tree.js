@@ -69,7 +69,8 @@ const updateTree = (() => {
             fo.classed('node-focused', true);
 
             event.stopPropagation();
-            openSidebox(d);
+            // openSidebox(d);
+              panel.open(d);
         });
 
 
@@ -123,18 +124,17 @@ const updateTree = (() => {
 
         minimap.rebuild();
         updateStats(root);
-        rebuildNavOrder();
+        // rebuildNavOrder();
+        panel.onTreeUpdated();
     }
 })();
 
-window.addEventListener('keydown', (e) => {
-  if (!selected) return;
-  if (e.key === 'ArrowRight') { const n = nextNode(selected); if(n){ openSidebox(n); } }
-  if (e.key === 'ArrowLeft')  { const p = prevNode(selected); if(p){ openSidebox(p); } }
-  if (e.key === 'ArrowUp')    { if (selected.parent) openSidebox(selected.parent); }
-  if (e.key === 'ArrowDown')  { if (selected.children?.[0]) openSidebox(selected.children[0]); }
+const panel = SidePanel.init({
+  container: '#sidebox',
+  svg, zoom,
+  getRoot: () => root,
+  updateTree   // pass your existing update(source) function
 });
-
 
 function fitToScreen(pad = 40) {
     const { minX, maxX, minY, maxY, w, h } = layoutExtents();

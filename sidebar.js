@@ -1,3 +1,11 @@
+
+const NODE_TEMPLATE = (msg_data) => {
+    const { text, speaker, timestamp } = msg_data;
+    const meta_template = `<div class="node-meta"><div class="badge ${speaker}">${speaker}</div><div class="timestamp">${timestamp}</div></div>`
+    const template = `<div class="node-card ${speaker}" title="${text}">${meta_template}<div class="node-text">${text}</div>`//<div class="node-actions"><button class="node-btn">Toggle</button></div></div>;
+    return template;
+}
+
 // SidePanel: self-contained, no globals leaked
 const SidePanel = (() => {
     let opts, els, state;
@@ -33,9 +41,6 @@ const SidePanel = (() => {
         const time = ensure(header, "[data-time]", () => {
             const d = document.createElement("div"); d.setAttribute("data-time", ""); return d;
         });
-        const closeBtn = ensure(header, "[data-close]", () => {
-            const b = document.createElement("button"); b.setAttribute("data-close", ""); b.textContent = "×"; return b;
-        });
 
         const body = ensure(box, "[data-body]", () => {
             const d = document.createElement("div"); d.setAttribute("data-body", ""); return d;
@@ -48,7 +53,10 @@ const SidePanel = (() => {
         const next = ensure(nav, "[data-next]", () => { const b = document.createElement("button"); b.setAttribute("data-next", ""); b.textContent = "Next ▶"; return b; });
         const up = ensure(nav, "[data-up]", () => { const b = document.createElement("button"); b.setAttribute("data-up", ""); b.textContent = "↑ Parent"; return b; });
         const down = ensure(nav, "[data-down]", () => { const b = document.createElement("button"); b.setAttribute("data-down", ""); b.textContent = "↓ First child"; return b; });
-
+        const closeBtn = ensure(nav, "[data-close]", () => {
+            const b = document.createElement("button"); b.setAttribute("data-close", ""); b.textContent = "×"; return b;
+        });
+        
         const forks = ensure(box, "[data-forks]", () => { const d = document.createElement("div"); d.className = "list"; d.setAttribute("data-forks", ""); return d; });
         const siblings = ensure(box, "[data-siblings]", () => { const d = document.createElement("div"); d.className = "list"; d.setAttribute("data-siblings", ""); return d; });
 
@@ -87,14 +95,22 @@ const SidePanel = (() => {
             item.className = "item";
             item.type = "button";
             item.dataset.id = n.id;
-            const meta = document.createElement("div");
-            meta.className = "meta";
-            meta.textContent = `${(n.data.speaker || "").toUpperCase()}  ${n.data.timestamp || ""}`;
-            const prev = document.createElement("div");
-            prev.className = "preview";
-            prev.textContent = preview(n.data.text);
-            item.appendChild(meta);
-            item.appendChild(prev);
+            // const meta = document.createElement("div");
+            // meta.className = "meta";
+            // meta.textContent = `${(n.data.speaker || "").toUpperCase()}  ${n.data.timestamp || ""}`;
+            // const prev = document.createElement("div");
+            // prev.className = "preview";
+            // prev.textContent = preview(n.data.text);
+            // item.appendChild(meta);
+            // item.appendChild(prev);
+            
+            const node = NODE_TEMPLATE({
+                text: preview(n.data.text),
+                speaker: n.data.speaker || "",
+                timestamp: n.data.timestamp || ""
+            })
+            item.innerHTML = node;
+            
             item.addEventListener("click", () => api.open(n));
             frag.appendChild(item);
         });
@@ -103,6 +119,8 @@ const SidePanel = (() => {
 
     function render(d) {
         text(els.title, (d.data.speaker || "NODE").toUpperCase());
+        els.title.className = "badge " + d.data.speaker || ""
+
         text(els.time, d.data.timestamp || "");
         // Use textContent to avoid HTML injection; preserve newlines visually with CSS.
         els.body.textContent = d.data.text || "";
@@ -117,12 +135,34 @@ const SidePanel = (() => {
     }
 
     function bindNav() {
+        window.addEventListener('keydown', (e) => {
+        if (!state.selected) return;
+        if (e.key === 'ArrowDown')  { const n = nextOf(state.selected); if (n) api.open(n); };
+        if (e.key === 'ArrowUp')  { const n = prevOf(state.selected); if (n) api.open(n); }
+        if (e.key === 'ArrowLeft')    { if (state.selected?.parent) api.open(state.selected.parent); };
+        if (e.key === 'ArrowRight')  { const c = state.selected?.children?.[0]; if (c) api.open(c); };
+        });
+
         els.prev.addEventListener("click", () => { const n = prevOf(state.selected); if (n) api.open(n); });
         els.next.addEventListener("click", () => { const n = nextOf(state.selected); if (n) api.open(n); });
         els.up.addEventListener("click", () => { if (state.selected?.parent) api.open(state.selected.parent); });
         els.down.addEventListener("click", () => { const c = state.selected?.children?.[0]; if (c) api.open(c); });
         els.closeBtn.addEventListener("click", () => { els.box.classList.remove("open"); state.selected = null; });
     }
+
+    function markSelected(d) {
+    // remove previous highlight
+    d3.selectAll('.node-fo').classed('node-focused', false);
+
+    // add highlight to the currently selected node
+    const fo = opts.svg
+        .selectAll('g.node')
+        .filter(n => n.id === d.id)
+        .select('.node-fo');
+
+    fo.classed('node-focused', true);
+    }
+
 
     const api = {
         init({
@@ -144,11 +184,14 @@ const SidePanel = (() => {
             rebuildOrder();
             centerOn(d, 160);
             render(d);
+            markSelected(d);
         },
 
         onTreeUpdated() {            // call after your update(root) completes
             rebuildOrder();
-            if (state.selected) render(state.selected);
+            if (state.selected) {
+                render(state.selected);
+            }
         }
     };
 
