@@ -46,7 +46,7 @@ const updateTree = (() => {
         const node = g.selectAll('g.node')
             .data(nodes, d => d.id);
 
-        const nodeEnter = node.enter().append('g')
+        /*const nodeEnter = node.enter().append('g')
             .attr('class', 'node')
             .attr('transform', d => `translate(${source.y0 ?? source.y},${source.x0 ?? source.x})`)
             .on('click', (event, d) => {
@@ -58,7 +58,20 @@ const updateTree = (() => {
                 else { d.children = d._children; d._children = null; }
                 update(d);
                 event.stopPropagation();
-            });
+            });*/
+
+        const nodeEnter = node.enter().append('g')
+        .attr('class', 'node')
+        .attr('transform', d => `translate(${source.y0 ?? source.y},${source.x0 ?? source.x})`)
+        .on('click', (event, d) => {
+            d3.selectAll('.node-fo').classed('node-focused', false);
+            const fo = d3.select(event.currentTarget).select('.node-fo');
+            fo.classed('node-focused', true);
+
+            event.stopPropagation();
+            openSidebox(d);
+        });
+
 
         // Use foreignObject to render an HTML card inside SVG
         const fo = nodeEnter.append('foreignObject')
@@ -110,8 +123,18 @@ const updateTree = (() => {
 
         minimap.rebuild();
         updateStats(root);
+        rebuildNavOrder();
     }
 })();
+
+window.addEventListener('keydown', (e) => {
+  if (!selected) return;
+  if (e.key === 'ArrowRight') { const n = nextNode(selected); if(n){ openSidebox(n); } }
+  if (e.key === 'ArrowLeft')  { const p = prevNode(selected); if(p){ openSidebox(p); } }
+  if (e.key === 'ArrowUp')    { if (selected.parent) openSidebox(selected.parent); }
+  if (e.key === 'ArrowDown')  { if (selected.children?.[0]) openSidebox(selected.children[0]); }
+});
+
 
 function fitToScreen(pad = 40) {
     const { minX, maxX, minY, maxY, w, h } = layoutExtents();

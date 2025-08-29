@@ -9,7 +9,7 @@
 </head>
 
 <body>
-  <header>
+  <header id="main-header">
     <div class="title">LLM Conversation Tree Visualizer</div>
     <button id="fit">Fit to Screen</button>
     <button id="expand">Expand All</button>
@@ -21,6 +21,22 @@
       <span title="Visible / Total leaves"><b id="stat-leaves">0/0</b> leaves</span>
       <span title="Forking nodes (degree > 1)"><b id="stat-forks">0</b> forks</span>
       <span title="Visible / All max depth"><b id="stat-depth">0/0</b> depth</span>
+    </div>
+    <div id="sidebox" aria-live="polite">
+      <header>
+        <div data-title></div>
+        <div data-time></div>
+        <button data-close aria-label="Close">×</button>
+      </header>
+      <div data-body></div>
+      <div class="nav">
+        <button data-prev>◀ Prev</button>
+        <button data-next>Next ▶</button>
+        <button data-up>↑ Parent</button>
+        <button data-down>↓ First child</button>
+      </div>
+      <div data-forks class="list"></div>
+      <div data-siblings class="list"></div>
     </div>
   </header>
   <div id="minimap"></div>
