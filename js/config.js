@@ -4,6 +4,8 @@ export const NODE_H = 120;   // virtual height used for layout spacing
 export const NODE_H_GAP = 30; // extra space between siblings
 export const H_GAP = 80;    // horizontal gap between columns
 export const V_GAP = 36;    // vertical gap within column (link curvature)
+export const DEFAULT_FIT_PAD = 100;
+export const FIT_TRANSITION_DURATION = 400;
 
 /** SAMPLE DATA */
 export const data = {

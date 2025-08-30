@@ -51,13 +51,13 @@ const appInit = () => {
         })
     svg.call(zoom);
 
-    const { update: updateTree, setRoot, getRoot, getRootData } = createTree(r, svg, zoom, g);
+    const { update, setRoot, getRoot, getRootData } = createTree(r, svg, zoom, g);
 
     const panel = SidePanel.init({
         container: '#sidebox',
         svg, zoom,
         getRoot,
-        updateTree   // pass your existing update(source) function
+        update   // pass your existing update(source) function
     });
 
     function getExtents() {

@@ -1,3 +1,5 @@
+import DOMPurify from './lib/dompurify.js';
+import { marked } from './lib/marked.js';
 
 // SidePanel: self-contained, no globals leaked
 export const SidePanel = (() => {
@@ -25,17 +27,17 @@ export const SidePanel = (() => {
         body.className = 'node-text';
         body.textContent = text || '';
 
-        const actions = document.createElement('div');
+        /*const actions = document.createElement('div');
         actions.className = 'node-actions';
         const btn = document.createElement('button');
         btn.className = 'node-btn';
         btn.textContent = 'Toggle';
-        actions.appendChild(btn);
+        actions.appendChild(btn);*/
 
         meta.append(badge, time);
-        card.append(meta, body, actions);
+        card.append(meta, body);//actions);
         item.appendChild(card);
-        return { item, toggleBtn: btn };
+        return { item, /*toggleBtn: btn*/ };
     }
 
     const ensure = (root, sel, maker) => {
@@ -82,13 +84,16 @@ export const SidePanel = (() => {
         const up = ensure(nav, "[data-up]", () => { const b = document.createElement("button"); b.setAttribute("data-up", ""); b.textContent = "↑ Parent"; return b; });
         const down = ensure(nav, "[data-down]", () => { const b = document.createElement("button"); b.setAttribute("data-down", ""); b.textContent = "↓ First child"; return b; });
         const closeBtn = ensure(nav, "[data-close]", () => {
-            const b = document.createElement("button"); b.setAttribute("data-close", ""); b.textContent = "×"; return b;
+            const b = document.createElement("button"); b.setAttribute("data-close", ""); b.textContent = "× Close panel"; return b;
+        });
+        const rawBtn = ensure(nav, "[data-raw]", () => {
+            const b = document.createElement("button"); b.setAttribute("data-raw", ""); b.textContent = "Show raw"; return b;
         });
 
         const forks = ensure(box, "[data-forks]", () => { const d = document.createElement("div"); d.className = "list"; d.setAttribute("data-forks", ""); return d; });
         const siblings = ensure(box, "[data-siblings]", () => { const d = document.createElement("div"); d.className = "list"; d.setAttribute("data-siblings", ""); return d; });
 
-        return { box, header, title, time, closeBtn, body, nav, prev, next, up, down, forks, siblings };
+        return { box, header, title, time, closeBtn, rawBtn, body, nav, prev, next, up, down, forks, siblings };
     }
 
     function ensureVisible(d) {
@@ -98,6 +103,36 @@ export const SidePanel = (() => {
             a = a.parent;
         }
         if (changed) opts.update(d);
+    }
+
+    function collapseChildren(d) {
+        let changed = false;
+
+        if (d.children) {
+            // Collapse just the immediate collapsed children
+            d._children = d.children;
+            d.children = null;
+            changed = true;
+        }
+
+        if (changed) {
+            opts.update(d); // re-render tree starting from d
+        }
+    }
+
+    function expandChildren(d) {
+        let changed = false;
+
+        if (d._children) {
+            // Expand just the immediate collapsed children
+            d.children = d._children;
+            d._children = null;
+            changed = true;
+        }
+
+        if (changed) {
+            opts.update(d); // re-render tree starting from d
+        }
     }
 
     function centerOn(d, dur = 200) {
@@ -123,14 +158,6 @@ export const SidePanel = (() => {
             item.className = "item";
             item.type = "button";
             item.dataset.id = n.id;
-            // const meta = document.createElement("div");
-            // meta.className = "meta";
-            // meta.textContent = `${(n.data.speaker || "").toUpperCase()}  ${n.data.timestamp || ""}`;
-            // const prev = document.createElement("div");
-            // prev.className = "preview";
-            // prev.textContent = preview(n.data.text);
-            // item.appendChild(meta);
-            // item.appendChild(prev);
 
             const node = makeNodeCard({
                 text: preview(n.data.text),
@@ -145,13 +172,20 @@ export const SidePanel = (() => {
         container.appendChild(frag);
     }
 
-    function render(d) {
+    function render(d, raw = els.rawBtn.dataset.raw ? true : false) {
         text(els.title, (d.data.speaker || "NODE").toUpperCase());
         els.title.className = "badge " + d.data.speaker || ""
 
         text(els.time, d.data.timestamp || "");
-        // Use textContent to avoid HTML injection; preserve newlines visually with CSS.
-        els.body.textContent = d.data.text || "";
+        if (raw) {
+            // Use textContent to avoid HTML injection; preserve newlines visually with CSS.
+            els.body.textContent = d.data.text || "";
+            els.body.classList.remove("markdown-sidebar")
+        } else {
+            const parsedMarkdown = marked.parse(d.data.text || "");
+            els.body.innerHTML = DOMPurify.sanitize(parsedMarkdown);
+            els.body.classList.add("markdown-sidebar")
+        }
 
         // Lists
         const kids = d.children || [];
@@ -163,24 +197,75 @@ export const SidePanel = (() => {
     }
 
     function bindNav() {
+        function selNext() {
+            const n = nextOf(state.selected);
+            if (n) {
+                api.open(n);
+            } else if (state.selected._children) {
+                expandChildren(state.selected)
+                selNext()
+            }
+        }
+
+        function selPrev() { const n = prevOf(state.selected); if (n) api.open(n); }
+
+        function selParent() { if (state.selected?.parent) api.open(state.selected.parent); }
+
+        function selChild() {
+            if (state.selected?._children) {
+                expandChildren(state.selected)
+            }
+            const c = state.selected?.children?.[0];
+            if (c) api.open(c);
+        }
+
+        function closePanel() { els.box.classList.remove("open"); state.selected = null; }
+
+        function toggleMarkdown() {
+            let isRaw = els.rawBtn.dataset.raw ? false : true;
+            render(state.selected, isRaw);
+            els.rawBtn.textContent = isRaw ? "Show markdown" : "Show raw";
+            els.rawBtn.dataset.raw = isRaw ? "1" : "";
+        }
+
+        function toggleCollapse() {
+            if (state.selected) {
+                if (state.selected.children) {
+                    collapseChildren(state.selected);
+                } else {
+                    expandChildren(state.selected);
+                }
+            }
+        }
+
         window.addEventListener('keydown', (e) => {
             if (!state.selected) return;
-            if (e.key === 'ArrowDown') { const n = nextOf(state.selected); if (n) api.open(n); };
-            if (e.key === 'ArrowUp') { const n = prevOf(state.selected); if (n) api.open(n); }
-            if (e.key === 'ArrowLeft') { if (state.selected?.parent) api.open(state.selected.parent); };
-            if (e.key === 'ArrowRight') { const c = state.selected?.children?.[0]; if (c) api.open(c); };
+            if (e.key === 'ArrowDown') selNext();
+            if (e.key === 'ArrowUp') selPrev();
+            if (e.key === 'ArrowLeft') selParent();
+            if (e.key === 'ArrowRight') selChild();
+            if (e.code === 'Space' || e.key === 'Enter') toggleCollapse();
         });
 
-        els.prev.addEventListener("click", () => { const n = prevOf(state.selected); if (n) api.open(n); });
-        els.next.addEventListener("click", () => { const n = nextOf(state.selected); if (n) api.open(n); });
-        els.up.addEventListener("click", () => { if (state.selected?.parent) api.open(state.selected.parent); });
-        els.down.addEventListener("click", () => { const c = state.selected?.children?.[0]; if (c) api.open(c); });
-        els.closeBtn.addEventListener("click", () => { els.box.classList.remove("open"); state.selected = null; });
+        els.prev.addEventListener("click", selPrev);
+        els.next.addEventListener("click", selNext);
+        els.up.addEventListener("click", selParent);
+        els.down.addEventListener("click", selChild);
+        els.closeBtn.addEventListener("click", closePanel);
+        els.rawBtn.addEventListener("click", toggleMarkdown)
     }
 
     function markSelected(d) {
-        // remove previous highlight
-        d3.selectAll('.node-fo').classed('node-focused', false);
+        if (state.currentHighlight) {
+            // remove previous highlight
+            state.currentHighlight.classed('node-focused', false);
+        }
+
+        // if (oldSelect) {
+        // opts.svg.select('.node-fo.node-focused').classed('node-focused', false);
+        // } else {
+        // d3.selectAll('.node-fo').classed('node-focused', false);
+        // }
 
         // add highlight to the currently selected node
         const fo = opts.svg
@@ -189,6 +274,7 @@ export const SidePanel = (() => {
             .select('.node-fo');
 
         fo.classed('node-focused', true);
+        state.currentHighlight = fo;
     }
 
 
@@ -199,6 +285,7 @@ export const SidePanel = (() => {
             getRoot,        // () => root
             update          // (source) => void
         }) {
+            console.log(update)
             opts = { container, svg, zoom, getRoot, update };
             els = buildSkeleton(container);
             state = { selected: null, order: [] };

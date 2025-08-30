@@ -28,20 +28,21 @@
         <div class="badge user" data-title></div>
         <div class="timestamp" data-time></div>
       </header>
-      <div class="textbox" data-body></div>
+      <div class="textbox markdown-sidebar" data-body></div>
       <div class="nav">
         <button data-prev>◀ Prev</button>
         <button data-next>Next ▶</button>
         <button data-up>↑ Parent</button>
         <button data-down>↓ First child</button>
-        <button data-close aria-label="Close">× Close panel</button>
+        <button class="long-button" data-close aria-label="Close">× Close panel</button>
+        <button class="long-button" data-raw aria-label="Toggle raw">Show raw</button>
       </div>
       <div data-forks class="list"></div>
       <div data-siblings class="list"></div>
     </div>
   <div id="minimap"></div>
   <div id="chart"></div>
-  <script src="./js/d3.js"></script>
+  <script src="./js/lib/d3.js"></script>
   <script type="module" defer src="./js/main.js"></script>
 </body>
 

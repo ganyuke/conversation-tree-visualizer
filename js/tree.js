@@ -1,4 +1,4 @@
-import { NODE_H, NODE_H_GAP, NODE_W, H_GAP, V_GAP } from './config.js'
+import { NODE_H, NODE_H_GAP, NODE_W, H_GAP, V_GAP, DEFAULT_FIT_PAD, FIT_TRANSITION_DURATION } from './config.js'
 import { emit, on, layoutExtents, collapse } from './utils.js';
 
 export const createTree = (r, svg, zoom, g) => {
@@ -29,7 +29,7 @@ export const createTree = (r, svg, zoom, g) => {
         return path;
     }
 
-    function fitToScreen(pad = 40) {
+    function fitToScreen(pad = DEFAULT_FIT_PAD) {
         const { minX, maxX, minY, maxY, w, h } = layoutExtents(nodes);
 
         // 2) Compute scale to fit inside the SVG with padding
@@ -48,7 +48,7 @@ export const createTree = (r, svg, zoom, g) => {
         const tx = (svgW / 2) - scale * contentCx;
         const ty = (svgH / 2) - scale * contentCy;
 
-        svg.transition().duration(400)
+        svg.transition().duration(FIT_TRANSITION_DURATION)
             .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
     }
 
@@ -69,7 +69,7 @@ export const createTree = (r, svg, zoom, g) => {
 
         link.exit()
             .transition().duration(300)
-            .attr('d', d => {
+            .attr('d', _d => {
                 const o = { x: source.x, y: source.y };
                 return diagonal(o, o);
             })
@@ -149,19 +149,20 @@ export const createTree = (r, svg, zoom, g) => {
         document.getElementById('expand').addEventListener('click', () => {
             root.each(d => { if (d._children) { d.children = d._children; d._children = null; } });
             update(root);
-            setTimeout(() => fitToScreen(60), 410);
+            // something about waiting for DOM or animations or something
+            setTimeout(() => fitToScreen(), 410);
         });
 
         document.getElementById('collapse').addEventListener('click', () => {
             collapse(root);
             update(root);
-            setTimeout(() => fitToScreen(60), 410);
+            setTimeout(() => fitToScreen(), 410);
         });
 
         on("window:resize", (evt) => {
             const {w,h} = evt.detail;
             svg.attr('width', w).attr('height', h).attr('viewBox', [0, 0, w, h]);
-            fitToScreen(60);
+            fitToScreen();
         })
     }
 
@@ -175,6 +176,7 @@ export const createTree = (r, svg, zoom, g) => {
     
     setRoot(r);
     init();
+    fitToScreen();
 
     return {
         update,
