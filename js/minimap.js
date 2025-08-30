@@ -1,12 +1,12 @@
 /** Minimap module */
-function createMinimap({
+export function createMinimap({
     container = '#minimap',
     height = 160,
     pad = 8,
+    getRootData,
     svg,    // main SVG selection
-    g,      // main <g> selection
     zoom,   // main zoom behavior
-    getExtents = layoutExtents
+    getExtents
 }) {
     const [kMin, kMax] = zoom.scaleExtent();
     const state = { w: window.innerWidth, h: height, pad, k: 1, tx: 0, ty: 0 };
@@ -31,17 +31,13 @@ function createMinimap({
         brushG.call(brush);
     }
 
-    // tree → minimap coords
-    function toMini(y, x) {
-        return [state.tx + state.k * y, state.ty + state.k * x];
-    }
     // minimap → tree coords
     function fromMini(mx, my) {
         return [(mx - state.tx) / state.k, (my - state.ty) / state.k]; // returns [y, x]
     }
 
     function rebuild() {
-        const { minX, maxX, minY, maxY, w, h } = getExtents();
+        const { minX, minY, w, h } = getExtents();
 
         // fit whole content into minimap with padding; prefer filling width
         const kx = (state.w - state.pad * 2) / w;
@@ -51,8 +47,9 @@ function createMinimap({
         const contentH = state.k * h;
         state.ty = (state.h - contentH) / 2 - state.k * minX;
 
+        const {links, nodes} = getRootData();
+        
         // Links (straight lines = cheap)
-        const links = root.links();
         const miniLinks = miniG.selectAll('line.mini-link').data(links, d => d.target.id);
         miniLinks.enter().append('line')
             .attr('class', 'mini-link')
@@ -65,7 +62,6 @@ function createMinimap({
         miniLinks.exit().remove();
 
         // Node ticks
-        const nodes = root.descendants();
         const miniNodes = miniG.selectAll('rect.mini-node').data(nodes, d => d.id);
         miniNodes.enter().append('rect')
             .attr('class', 'mini-node')
@@ -118,9 +114,4 @@ function createMinimap({
     };
     size(); // initial
     return api;
-}
-
-// ==== Instantiate the minimap and hook lifecycle points ====
-const minimap = createMinimap({ container: '#minimap', height: 160, pad: 8, svg, g, zoom });
-
-subscribeToResize(minimap.resize)
+};

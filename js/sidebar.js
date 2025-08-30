@@ -1,14 +1,42 @@
 
-const NODE_TEMPLATE = (msg_data) => {
-    const { text, speaker, timestamp } = msg_data;
-    const meta_template = `<div class="node-meta"><div class="badge ${speaker}">${speaker}</div><div class="timestamp">${timestamp}</div></div>`
-    const template = `<div class="node-card ${speaker}" title="${text}">${meta_template}<div class="node-text">${text}</div>`//<div class="node-actions"><button class="node-btn">Toggle</button></div></div>;
-    return template;
-}
-
 // SidePanel: self-contained, no globals leaked
-const SidePanel = (() => {
+export const SidePanel = (() => {
     let opts, els, state;
+
+    function makeNodeCard({ text, speaker, timestamp }) {
+        const item = document.createElement('div');
+        item.className = 'node-item';
+        const card = document.createElement('div');
+        card.className = `node-card ${speaker || ''}`;
+        card.title = text || '';
+
+        const meta = document.createElement('div');
+        meta.className = 'node-meta';
+
+        const badge = document.createElement('div');
+        badge.className = `badge ${speaker || ''}`;
+        badge.textContent = (speaker || 'node').toUpperCase();
+
+        const time = document.createElement('div');
+        time.className = 'timestamp';
+        time.textContent = timestamp || '';
+
+        const body = document.createElement('div');
+        body.className = 'node-text';
+        body.textContent = text || '';
+
+        const actions = document.createElement('div');
+        actions.className = 'node-actions';
+        const btn = document.createElement('button');
+        btn.className = 'node-btn';
+        btn.textContent = 'Toggle';
+        actions.appendChild(btn);
+
+        meta.append(badge, time);
+        card.append(meta, body, actions);
+        item.appendChild(card);
+        return { item, toggleBtn: btn };
+    }
 
     const ensure = (root, sel, maker) => {
         let el = root.querySelector(sel);
@@ -56,7 +84,7 @@ const SidePanel = (() => {
         const closeBtn = ensure(nav, "[data-close]", () => {
             const b = document.createElement("button"); b.setAttribute("data-close", ""); b.textContent = "×"; return b;
         });
-        
+
         const forks = ensure(box, "[data-forks]", () => { const d = document.createElement("div"); d.className = "list"; d.setAttribute("data-forks", ""); return d; });
         const siblings = ensure(box, "[data-siblings]", () => { const d = document.createElement("div"); d.className = "list"; d.setAttribute("data-siblings", ""); return d; });
 
@@ -103,14 +131,14 @@ const SidePanel = (() => {
             // prev.textContent = preview(n.data.text);
             // item.appendChild(meta);
             // item.appendChild(prev);
-            
-            const node = NODE_TEMPLATE({
+
+            const node = makeNodeCard({
                 text: preview(n.data.text),
                 speaker: n.data.speaker || "",
                 timestamp: n.data.timestamp || ""
-            })
-            item.innerHTML = node;
-            
+            }).item;
+            item.append(node);
+
             item.addEventListener("click", () => api.open(n));
             frag.appendChild(item);
         });
@@ -136,11 +164,11 @@ const SidePanel = (() => {
 
     function bindNav() {
         window.addEventListener('keydown', (e) => {
-        if (!state.selected) return;
-        if (e.key === 'ArrowDown')  { const n = nextOf(state.selected); if (n) api.open(n); };
-        if (e.key === 'ArrowUp')  { const n = prevOf(state.selected); if (n) api.open(n); }
-        if (e.key === 'ArrowLeft')    { if (state.selected?.parent) api.open(state.selected.parent); };
-        if (e.key === 'ArrowRight')  { const c = state.selected?.children?.[0]; if (c) api.open(c); };
+            if (!state.selected) return;
+            if (e.key === 'ArrowDown') { const n = nextOf(state.selected); if (n) api.open(n); };
+            if (e.key === 'ArrowUp') { const n = prevOf(state.selected); if (n) api.open(n); }
+            if (e.key === 'ArrowLeft') { if (state.selected?.parent) api.open(state.selected.parent); };
+            if (e.key === 'ArrowRight') { const c = state.selected?.children?.[0]; if (c) api.open(c); };
         });
 
         els.prev.addEventListener("click", () => { const n = prevOf(state.selected); if (n) api.open(n); });
@@ -151,16 +179,16 @@ const SidePanel = (() => {
     }
 
     function markSelected(d) {
-    // remove previous highlight
-    d3.selectAll('.node-fo').classed('node-focused', false);
+        // remove previous highlight
+        d3.selectAll('.node-fo').classed('node-focused', false);
 
-    // add highlight to the currently selected node
-    const fo = opts.svg
-        .selectAll('g.node')
-        .filter(n => n.id === d.id)
-        .select('.node-fo');
+        // add highlight to the currently selected node
+        const fo = opts.svg
+            .selectAll('g.node')
+            .filter(n => n.id === d.id)
+            .select('.node-fo');
 
-    fo.classed('node-focused', true);
+        fo.classed('node-focused', true);
     }
 
 

@@ -1,4 +1,4 @@
-const updateStats = (() => {
+export const createStats = (() => {
     function countAllNodes(d) {
         let n = 1;
         (d.children || []).forEach(c => n += countAllNodes(c));
@@ -50,5 +50,5 @@ const updateStats = (() => {
         set('stat-forks', `${s.forks}`);
         set('stat-depth', `${s.depthVisible}/${s.depthAll}`);
     };
-})();
+});
 
